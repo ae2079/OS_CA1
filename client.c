@@ -29,14 +29,25 @@ int connectServer(int port) {
 int main(int argc, char const *argv[]) {
     int fd;
     char buff[1024] = {0};
+    int room = 0;
 
     fd = connectServer(8080);
 
-    while (1) {
-        read(0, buff, 1024);
-        send(fd, buff, strlen(buff), 0);
-        memset(buff, 0, 1024);
-    }
+    fd_set working_set;
+    FD_ZERO(&working_set);
+    FD_SET(0, &working_set);
+    FD_SET(fd, &working_set);
+
+    read(0, buff, 1024);
+    send(fd, buff, strlen(buff), 0);
+    memset(buff, 0, 1024);
+
+    recv(fd, buff, 1024, 0);
+    room = atoi(buff);
+    printf("room : %d\n" , room);
+    memset(buff, 0, 1024);
+    printf("end of client work.");
+    // chat in the room
 
     return 0;
 }
