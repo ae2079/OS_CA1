@@ -9,7 +9,6 @@
 #include <sys/time.h>
 
 //#define MAX_NUM_OF_ROOMS 10
-#define SERVER_PORT 8080
 #define ROOM_PORTS_START 400
 #define NUM_OF_ROOM_MEMBERS 3
 #define COMPUTER_REQUEST "computer\n"
@@ -47,7 +46,7 @@ int acceptClient(int server_fd) {
 }
 
 int make_room(int* members, int* num_of_rooms) {
-    int sock, broadcast = 1, opt = 1;
+    /*int sock, broadcast = 1, opt = 1;
     struct sockaddr_in bc_address;
 
     sock = socket(AF_INET, SOCK_DGRAM, 0);
@@ -56,14 +55,17 @@ int make_room(int* members, int* num_of_rooms) {
 
     bc_address.sin_family = AF_INET; 
     bc_address.sin_port = htons(ROOM_PORTS_START + *num_of_rooms ); 
-    bc_address.sin_addr.s_addr = inet_addr("192.168.1.255");
+    bc_address.sin_addr.s_addr = inet_addr("192.168.1.255");*/
 
     *num_of_rooms++;
 
     char buff[1024] = {0};
     for(int i = 0; i < NUM_OF_ROOM_MEMBERS; i++){
         memset(buff, 0, 1024);
-        sprintf(buff, "%d", sock);
+        sprintf(buff, "%d", ROOM_PORTS_START + *num_of_rooms);
+        send(members[i], buff, strlen(buff), 0);
+        memset(buff, 0, 1024);
+        sprintf(buff, "%d", i);
         send(members[i], buff, strlen(buff), 0);
     }
     return sock;
@@ -76,7 +78,7 @@ int main(int argc, char const *argv[]) {
     int comp_set_ind, elec_set_ind, civi_set_ind, mech_set_ind, num_of_rooms;
     comp_set_ind = elec_set_ind = civi_set_ind = mech_set_ind = num_of_rooms = 0;
 
-    server_fd = setupServer(SERVER_PORT);
+    server_fd = setupServer(argv[0]);
 
     FD_ZERO(&master_set);
     max_sd = server_fd;
