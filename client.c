@@ -38,16 +38,28 @@ int main(int argc, char const *argv[]) {
     FD_SET(0, &working_set);
     FD_SET(fd, &working_set);
 
-    read(0, buff, 1024);
-    send(fd, buff, strlen(buff), 0);
-    memset(buff, 0, 1024);
+    select(2, &working_set, NULL, NULL, NULL);
 
-    recv(fd, buff, 1024, 0);
-    room = atoi(buff);
-    printf("room : %d\n" , room);
-    memset(buff, 0, 1024);
-    printf("end of client work.");
+    while(room == 0){
+        if(FD_ISSET(0, &working_set)){
+            read(0, buff, 1024);
+            send(fd, buff, strlen(buff), 0);
+            memset(buff, 0, 1024);
+        }
+        if(FD_ISSET(0, &working_set)){
+            recv(fd, buff, 1024, 0);
+            room = atoi(buff);
+            printf("room : %d\n" , room);
+            memset(buff, 0, 1024);
+        }
+    }
+
+    
     // chat in the room
+
+
+
+    printf("end of client work.");
 
     return 0;
 }
