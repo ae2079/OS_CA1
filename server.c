@@ -8,15 +8,17 @@
 #include <arpa/inet.h>
 #include <sys/time.h>
 
-//#define MAX_NUM_OF_ROOMS 10
-#define ROOM_PORTS_START 400
 #define NUM_OF_ROOM_MEMBERS 3
+#define MAX_NUM_OF_CLIENTS 1000
 #define DELAY 0.01
 #define COMPUTER_REQUEST "computer\n"
 #define ELECTRICAL_REQUEST "electrical\n"
 #define CIVIL_REQUEST "civil\n"
 #define MECHANIC_REQUEST "mechanic\n"
-
+#define COMP_FILE "comp.txt"
+#define ELEC_FILE "elec.txt"
+#define CIVI_FILE "civi.txt"
+#define MECH_FILE "mech.txt"
 
 int setupServer(int port) {
     struct sockaddr_in address;
@@ -46,47 +48,84 @@ int acceptClient(int server_fd) {
     return client_fd;
 }
 
-int make_room(int *members, int* num_of_rooms) {
-    /*int sock, broadcast = 1, opt = 1;
-    struct sockaddr_in bc_address;
+int make_room(int *members, int* num_of_rooms, int server_port) {
+    char buff[10] = {0};
+    (*num_of_rooms)++;
 
-    sock = socket(AF_INET, SOCK_DGRAM, 0);
-    setsockopt(sock, SOL_SOCKET, SO_BROADCAST, &broadcast, sizeof(broadcast));
-    setsockopt(sock, SOL_SOCKET, SO_REUSEPORT, &opt, sizeof(opt));
-
-    bc_address.sin_family = AF_INET; 
-    bc_address.sin_port = htons(ROOM_PORTS_START + *num_of_rooms ); 
-    bc_address.sin_addr.s_addr = inet_addr("192.168.1.255");*/
-
-    int room = socket(AF_INET, SOCK_DGRAM, 0);
-    char buff[1024] = {0};
     for(int i = 0; i < NUM_OF_ROOM_MEMBERS; i++){
-        memset(buff, 0, 1024);
-        sprintf(buff, "%d", ROOM_PORTS_START + *num_of_rooms);
+        memset(buff, 0, 10);
+        sprintf(buff, "%d", server_port + *num_of_rooms);
         send(members[i], buff, strlen(buff), 0);
         sleep(0.01);
-        memset(buff, 0, 1024);
+        memset(buff, 0, 10);
         sprintf(buff, "%d", i);
         send(members[i], buff, strlen(buff), 0);
         sleep(0.01);
-        /*memset(buff, 0, 1024);
-        sprintf(buff, "%d", room);
-        sleep(0.001);
-        send(members[i], buff, strlen(buff), 0);*/
     }
 
-    (*num_of_rooms)++;
     return *num_of_rooms;
 }
 
+void save_to_proper_file(char *buffer, int i, int comp_set[MAX_NUM_OF_CLIENTS], int elec_set[MAX_NUM_OF_CLIENTS], int civi_set[MAX_NUM_OF_CLIENTS], int mech_set[MAX_NUM_OF_CLIENTS], int comp_set_ind, int elec_set_ind, int civi_set_ind, int mech_set_ind){
+    char file_name[100];
+    for(int j = 0; j < comp_set_ind; j++){
+        if(comp_set[j] == i){
+            strcpy(file_name, COMP_FILE);
+        }
+    }
+    for(int j = 0; j < elec_set_ind; j++){
+        if(elec_set[j] == i){
+            strcpy(file_name, ELEC_FILE);
+        }
+    }
+    for(int j = 0; j < civi_set_ind; j++){
+        if(civi_set[j] == i){
+            strcpy(file_name, CIVI_FILE);
+        }
+    }
+    for(int j = 0; j < mech_set_ind; j++){
+        if(mech_set[j] == i){
+            strcpy(file_name, MECH_FILE);
+        }
+    }
+    int file = open(file_name, O_CREAT | O_APPEND | O_WRONLY);
+    write(file, buffer, strlen(buffer));
+    close(file);
+}
+
+void clear_from_sets(int i, int *comp_set, int *elec_set, int *civi_set, int *mech_set, int comp_set_ind, int elec_set_ind, int civi_set_ind, int mech_set_ind){
+    for(int j = 0; j < comp_set_ind; j++){
+        if(comp_set[j] == i){
+            comp_set[j] = -1;
+        }
+    }
+    for(int j = 0; j < elec_set_ind; j++){
+        if(elec_set[j] == i){
+            elec_set[j] = -1;
+        }
+    }
+    for(int j = 0; j < civi_set_ind; j++){
+        if(civi_set[j] == i){
+            civi_set[j] = -1;
+        }
+    }
+    for(int j = 0; j < mech_set_ind; j++){
+        if(mech_set[j] == i){
+            mech_set[j] = -1;
+        }
+    }
+}
+
 int main(int argc, char const *argv[]) {
-    int server_fd, new_socket, max_sd;
-    char buffer[1024] = {0};
-    fd_set master_set, working_set, comp_set, elec_set, civi_set, mech_set;
+    int server_fd, new_socket, max_sd, server_port;
+    char buffer[NUM_OF_ROOM_MEMBERS*1024] = {0};
+    fd_set master_set, working_set;
     int comp_set_ind, elec_set_ind, civi_set_ind, mech_set_ind, num_of_rooms;
     comp_set_ind = elec_set_ind = civi_set_ind = mech_set_ind = num_of_rooms = 0;
-
-    server_fd = setupServer(atoi(argv[1]));
+    int comp_set[MAX_NUM_OF_CLIENTS], elec_set[MAX_NUM_OF_CLIENTS], civi_set[MAX_NUM_OF_CLIENTS], mech_set[MAX_NUM_OF_CLIENTS];
+    
+    server_port = atoi(argv[1]);
+    server_fd = setupServer(server_port);
 
     FD_ZERO(&master_set);
     max_sd = server_fd;
@@ -120,24 +159,25 @@ int main(int argc, char const *argv[]) {
                 
                 else { // client sending msg
                     int bytes_received;
-                    bytes_received = recv(i , buffer, 1024, 0);
+                    bytes_received = recv(i , buffer, 1024*NUM_OF_ROOM_MEMBERS, 0);
                     
                     if (bytes_received == 0) { // EOF
                         printf("client fd = %d closed\n", i);
                         close(i);
                         FD_CLR(i, &master_set);
+                        clear_from_sets(i, comp_set, elec_set, civi_set, mech_set, comp_set_ind, elec_set_ind, civi_set_ind, mech_set_ind);
                         continue;
                     }
 
                     printf("client %d: %s\n", i, buffer);
-                    //printf("compare result : %d \n", strcmp(buffer, "a\n"));
+
                     if (strcmp(buffer, COMPUTER_REQUEST) == 0){ // computer request
                         comp[comp_index] = i;
                         comp_index++;
+                        comp_set[comp_set_ind] = i;
+                        comp_set_ind++;
                         if (comp_index == NUM_OF_ROOM_MEMBERS){
-                            int new_room = make_room(comp, &num_of_rooms);
-                            FD_SET(new_room, &comp_set);
-                            comp_set_ind++;
+                            make_room(comp, &num_of_rooms, server_port);
                             printf("create computer room with id : %d\n" , comp_set_ind);
                             comp_index = 0;
                         }
@@ -149,10 +189,10 @@ int main(int argc, char const *argv[]) {
                     else if (strcmp(buffer, ELECTRICAL_REQUEST) == 0){ // electrical request
                         elec[elec_index] = i;
                         elec_index++;
+                        elec_set[elec_set_ind] = i;
+                        elec_set_ind++;
                         if (elec_index == NUM_OF_ROOM_MEMBERS){
-                            int new_room = make_room(elec, &num_of_rooms);
-                            FD_SET(new_room, &elec_set);
-                            elec_set_ind++;
+                            make_room(elec, &num_of_rooms, server_port);
                             printf("create electrical room with id : %d\n" , elec_set_ind);
                             elec_index = 0;
                         }
@@ -164,10 +204,10 @@ int main(int argc, char const *argv[]) {
                     else if (strcmp(buffer, CIVIL_REQUEST) == 0){ // civil request
                         civi[civi_index] = i;
                         civi_index++;
+                        civi_set[civi_set_ind] = i;
+                        civi_set_ind++;
                         if (civi_index == NUM_OF_ROOM_MEMBERS){
-                            int new_room = make_room(civi, &num_of_rooms);
-                            FD_SET(new_room, &civi_set);
-                            civi_set_ind++;
+                            make_room(civi, &num_of_rooms, server_port);
                             printf("create civil room with id : %d\n" , civi_set_ind);
                             civi_index = 0;
                         }
@@ -179,10 +219,10 @@ int main(int argc, char const *argv[]) {
                     else if (strcmp(buffer, MECHANIC_REQUEST) == 0){ // mechanic request
                         mech[mech_index] = i;
                         mech_index++;
+                        mech_set[mech_set_ind] = i;
+                        mech_set_ind++;
                         if (mech_index == NUM_OF_ROOM_MEMBERS){
-                            int new_room = make_room(mech, &num_of_rooms);
-                            FD_SET(new_room, &mech_set);
-                            mech_set_ind++;
+                            make_room(mech, &num_of_rooms, server_port);
                             printf("create mechanic room with id : %d\n" , mech_set_ind);
                             mech_index = 0;
                         }
@@ -191,7 +231,10 @@ int main(int argc, char const *argv[]) {
                             printf("in this queue exist %d client.\n", mech_index);
                         }
                     }
-                    memset(buffer, 0, 1024);
+                    else{
+                        save_to_proper_file(buffer, i, comp_set, elec_set, civi_set, mech_set, comp_set_ind, elec_set_ind, civi_set_ind, mech_set_ind);
+                    }
+                    memset(buffer, 0, 1024*NUM_OF_ROOM_MEMBERS);
                 }
             }
         }
