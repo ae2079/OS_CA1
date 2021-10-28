@@ -99,7 +99,9 @@ int main(int argc, char const *argv[]) {
             //alarm(1);
             read(0, buff, 1024);
             //alarm(0);
-            sendto(room, buff, strlen(buff), 0,(struct sockaddr *)&bc_address, sizeof(bc_address));
+            char temp[1100];
+            sprintf(temp, "Best answer is number : %s\n", buff);
+            sendto(room, temp, strlen(temp), 0,(struct sockaddr *)&bc_address, sizeof(bc_address));
             sleep(0.01);
             int index = atoi(buff);
             memset(buff, 0, 1024);
