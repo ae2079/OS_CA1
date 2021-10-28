@@ -11,6 +11,7 @@
 //#define MAX_NUM_OF_ROOMS 10
 #define ROOM_PORTS_START 400
 #define NUM_OF_ROOM_MEMBERS 3
+#define DELAY 0.01
 #define COMPUTER_REQUEST "computer\n"
 #define ELECTRICAL_REQUEST "electrical\n"
 #define CIVIL_REQUEST "civil\n"
@@ -26,7 +27,7 @@ int setupServer(int port) {
     setsockopt(server_fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
     
     address.sin_family = AF_INET;
-    address.sin_addr.s_addr = INADDR_ANY;
+    address.sin_addr.s_addr = inet_addr("127.0.0.1");
     address.sin_port = htons(port);
 
     bind(server_fd, (struct sockaddr *)&address, sizeof(address));
@@ -45,7 +46,7 @@ int acceptClient(int server_fd) {
     return client_fd;
 }
 
-int make_room(int* members, int* num_of_rooms) {
+int make_room(int *members, int* num_of_rooms) {
     /*int sock, broadcast = 1, opt = 1;
     struct sockaddr_in bc_address;
 
@@ -57,18 +58,25 @@ int make_room(int* members, int* num_of_rooms) {
     bc_address.sin_port = htons(ROOM_PORTS_START + *num_of_rooms ); 
     bc_address.sin_addr.s_addr = inet_addr("192.168.1.255");*/
 
-    *num_of_rooms++;
-
+    int room = socket(AF_INET, SOCK_DGRAM, 0);
     char buff[1024] = {0};
     for(int i = 0; i < NUM_OF_ROOM_MEMBERS; i++){
         memset(buff, 0, 1024);
         sprintf(buff, "%d", ROOM_PORTS_START + *num_of_rooms);
         send(members[i], buff, strlen(buff), 0);
+        sleep(0.01);
         memset(buff, 0, 1024);
         sprintf(buff, "%d", i);
         send(members[i], buff, strlen(buff), 0);
+        sleep(0.01);
+        /*memset(buff, 0, 1024);
+        sprintf(buff, "%d", room);
+        sleep(0.001);
+        send(members[i], buff, strlen(buff), 0);*/
     }
-    return sock;
+
+    (*num_of_rooms)++;
+    return *num_of_rooms;
 }
 
 int main(int argc, char const *argv[]) {
@@ -78,7 +86,7 @@ int main(int argc, char const *argv[]) {
     int comp_set_ind, elec_set_ind, civi_set_ind, mech_set_ind, num_of_rooms;
     comp_set_ind = elec_set_ind = civi_set_ind = mech_set_ind = num_of_rooms = 0;
 
-    server_fd = setupServer(argv[0]);
+    server_fd = setupServer(atoi(argv[1]));
 
     FD_ZERO(&master_set);
     max_sd = server_fd;
