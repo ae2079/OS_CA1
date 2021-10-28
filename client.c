@@ -10,6 +10,7 @@
 #include <signal.h>
 
 #define NUM_OF_ROOM_MEMBERS 3
+/// for test with bug = 1
 #define TIME_OUT_LIMIT 60
 
 int connectServer(int port) {
@@ -79,13 +80,15 @@ int main(int argc, char const *argv[]) {
         if(i == order){
             char answers[NUM_OF_ROOM_MEMBERS][1024];
             printf("it is your turn to ask a question.\nwrite your question :\n");
+            //alarm(1);
             read(0, buff, 1024);
+            //alarm(0);
             sprintf(answers[0], "question : %s\n", buff);
             sendto(room, buff, strlen(buff), 0,(struct sockaddr *)&bc_address, sizeof(bc_address));
             sleep(0.01);
             memset(buff, 0, 1024);
             for(int j = 0; j < NUM_OF_ROOM_MEMBERS - 1; j++){
-                //alarm(5);
+                //alarm(1);
                 recv(room, buff, 1024, 0);
                 //alarm(0);
                 sprintf(answers[j+1], "answer%d : %s\n", j+1, buff); 
@@ -93,7 +96,9 @@ int main(int argc, char const *argv[]) {
                 memset(buff, 0, 1024);
             }
             printf("select best answer : \n");
+            //alarm(1);
             read(0, buff, 1024);
+            //alarm(0);
             sendto(room, buff, strlen(buff), 0,(struct sockaddr *)&bc_address, sizeof(bc_address));
             sleep(0.01);
             int index = atoi(buff);
@@ -102,7 +107,7 @@ int main(int argc, char const *argv[]) {
             send_answers_to_server(answers, server);
         }
         else{
-            //alarm(5);
+            //alarm(1);
             recv(room, buff, 1024, 0);
             //alarm(0);
             printf("question : %s\n", buff);
@@ -119,7 +124,7 @@ int main(int argc, char const *argv[]) {
                     memset(buff, 0, 1024);
                 }
                 else{
-                    //alarm(5);
+                    //alarm(1);
                     recv(room, buff, 1024, 0);
                     //alarm(0);
                     printf("answer%d : %s\n", j+1, buff);
